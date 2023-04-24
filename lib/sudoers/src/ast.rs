@@ -56,16 +56,14 @@ impl Default for Tag {
 }
 
 /// Commands with attached attributes.
-#[derive(Debug)]
-pub struct CommandSpec(pub Tag, pub Spec<Command>, pub Sha2);
-
-pub type PairVec<A, B> = Vec<(A, Vec<B>)>;
+//#[derive(Debug)]
+pub struct CommandSpec(pub Vec<Modifier>, pub Spec<Command>, pub Sha2);
 
 /// The main AST object for one sudoer-permission line
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct PermissionSpec {
     pub users: SpecList<UserSpecifier>,
-    pub permissions: PairVec<SpecList<Hostname>, (Option<RunAs>, Vec<CommandSpec>)>,
+    pub permissions: Vec<(SpecList<Hostname>, Vec<(Option<RunAs>, CommandSpec)>)>,
 }
 
 #[derive(Debug)]
@@ -100,7 +98,7 @@ pub enum Mode {
 }
 
 /// The Sudoers file can contain permissions and directives
-#[derive(Debug)]
+//#[derive(Debug)]
 pub enum Sudo {
     Spec(PermissionSpec),
     Decl(Directive),
@@ -287,9 +285,7 @@ impl Parse for MetaOrTag {
 /// commandspec = [tag modifiers]*, command
 /// ```
 
-pub struct ProtoCommandSpec(Vec<Modifier>, Spec<Command>, Sha2);
-
-impl Parse for ProtoCommandSpec {
+impl Parse for CommandSpec {
     fn parse(stream: &mut impl CharStream) -> Parsed<Self> {
         let no_hash = Sha2(Box::default());
         let mut tags = vec![];
@@ -297,9 +293,9 @@ impl Parse for ProtoCommandSpec {
             use Qualified::Allow;
             match keyword {
                 Meta::Only(modifier) => tags.push(modifier),
-                Meta::All => return make(ProtoCommandSpec(tags, Allow(Meta::All), no_hash)),
+                Meta::All => return make(CommandSpec(tags, Allow(Meta::All), no_hash)),
                 Meta::Alias(name) => {
-                    return make(ProtoCommandSpec(tags, Allow(Meta::Alias(name)), no_hash))
+                    return make(CommandSpec(tags, Allow(Meta::Alias(name)), no_hash))
                 }
             }
             if tags.len() > Identifier::LIMIT {
@@ -337,28 +333,7 @@ impl Parse for ProtoCommandSpec {
 
         let cmd: Spec<Command> = expect_nonterminal(stream)?;
 
-        make(ProtoCommandSpec(tags, cmd, digest))
-    }
-}
-
-/// A manual implementation (instead of using Many) to chain Tag's together.
-impl Parse for Vec<CommandSpec> {
-    fn parse(stream: &mut impl CharStream) -> Parsed<Self> {
-        impl Many for ProtoCommandSpec {}
-        let cmdspecs = try_nonterminal::<Vec<ProtoCommandSpec>>(stream)?;
-
-        let mut tag = Default::default();
-        let chained_specs = cmdspecs
-            .into_iter()
-            .map(|ProtoCommandSpec(modifiers, cmd, digest)| {
-                for f in modifiers {
-                    f(&mut tag);
-                }
-                CommandSpec(tag.clone(), cmd, digest)
-            })
-            .collect();
-
-        make(chained_specs)
+        make(CommandSpec(tags, cmd, digest))
     }
 }
 
@@ -368,7 +343,7 @@ impl Parse for Vec<CommandSpec> {
 /// (host,runas,commandspec) = hostlist, "=", runas?, commandspec
 /// ```
 
-impl Parse for (SpecList<Hostname>, PairVec<Option<RunAs>, CommandSpec>) {
+impl Parse for (SpecList<Hostname>, Vec<(Option<RunAs>, CommandSpec)>) {
     fn parse(stream: &mut impl CharStream) -> Parsed<Self> {
         let hosts = try_nonterminal(stream)?;
         expect_syntax('=', stream)?;
@@ -382,7 +357,7 @@ impl Parse for (SpecList<Hostname>, PairVec<Option<RunAs>, CommandSpec>) {
 /// A hostname, runas specifier, commandspec combination can occur multiple times in a single
 /// sudoer line (seperated by ":")
 
-impl Many for (SpecList<Hostname>, PairVec<Option<RunAs>, CommandSpec>) {
+impl Many for (SpecList<Hostname>, Vec<(Option<RunAs>, CommandSpec)>) {
     const SEP: char = ':';
 }
 

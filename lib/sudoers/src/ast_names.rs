@@ -39,14 +39,10 @@ mod names {
         const DESCRIPTION: &'static str = "path to binary (or sudoedit)";
     }
 
-    impl UserFriendly for CommandSpec {
-        const DESCRIPTION: &'static str = tokens::Command::DESCRIPTION;
-    }
-
     impl UserFriendly
         for (
             SpecList<tokens::Hostname>,
-            PairVec<Option<RunAs>, CommandSpec>,
+            Vec<(Option<RunAs>, CommandSpec)>,
         )
     {
         const DESCRIPTION: &'static str = tokens::Hostname::DESCRIPTION;
@@ -89,8 +85,8 @@ mod names {
         const DESCRIPTION: &'static str = "digest";
     }
 
-    impl UserFriendly for ProtoCommandSpec {
-        const DESCRIPTION: &'static str = CommandSpec::DESCRIPTION;
+    impl UserFriendly for CommandSpec {
+        const DESCRIPTION: &'static str = tokens::Command::DESCRIPTION;
     }
 
     impl UserFriendly for tokens::ChDir {
