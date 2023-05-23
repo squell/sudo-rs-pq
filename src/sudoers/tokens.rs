@@ -18,6 +18,11 @@ impl Token for Username {
     fn accept_1st(c: char) -> bool {
         c != '_' && Self::accept(c)
     }
+
+    const ESCAPE: char = '\\';
+    fn escaped(c: char) -> bool {
+        matches!(c, '\\' | '"' | ',' | ':' | '=' | '!' | '(' | ')')
+    }
 }
 
 impl Many for Username {}
@@ -68,6 +73,11 @@ impl Token for Hostname {
 
     fn accept(c: char) -> bool {
         c.is_ascii_alphanumeric() || ".-_".contains(c)
+    }
+
+    const ESCAPE: char = Username::ESCAPE;
+    fn escaped(c: char) -> bool {
+        Username::escaped(c)
     }
 }
 
