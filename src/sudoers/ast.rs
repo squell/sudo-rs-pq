@@ -186,23 +186,42 @@ impl Parse for Meta<Identifier> {
 /// ```
 impl Parse for UserSpecifier {
     fn parse(stream: &mut impl CharStream) -> Parsed<Self> {
-        let userspec = if accept_if(|c| c == '%', stream).is_ok() {
-            let ctor = if accept_if(|c| c == ':', stream).is_ok() {
-                UserSpecifier::NonunixGroup
+        fn parse_user(stream: &mut impl CharStream) -> Parsed<UserSpecifier> {
+            let userspec = if accept_if(|c| c == '%', stream).is_ok() {
+                let ctor = if accept_if(|c| c == ':', stream).is_ok() {
+                    UserSpecifier::NonunixGroup
+                } else {
+                    UserSpecifier::Group
+                };
+                // in this case we must fail 'hard', since input has been consumed
+                ctor(expect_nonterminal(stream)?)
+            } else if accept_if(|c| c == '+', stream).is_ok() {
+                // TODO Netgroups
+                unrecoverable!(stream, "netgroups are not supported yet");
             } else {
-                UserSpecifier::Group
+                // in this case we must fail 'softly', since no input has been consumed yet
+                UserSpecifier::User(try_nonterminal(stream)?)
             };
-            // in this case we must fail 'hard', since input has been consumed
-            ctor(expect_nonterminal(stream)?)
-        } else if accept_if(|c| c == '+', stream).is_ok() {
-            // TODO Netgroups
-            unrecoverable!(stream, "netgroups are not supported yet");
-        } else {
-            // in this case we must fail 'softly', since no input has been consumed yet
-            UserSpecifier::User(try_nonterminal(stream)?)
-        };
 
-        make(userspec)
+            make(userspec)
+        }
+
+        // if we see a quote, first parse the quoted text as a token and then
+        // re-parse whatever we found inside; this is a lazy solution but it works
+        if accept_if(|c| c == '"', stream).is_ok() {
+            let begin_pos = stream.get_pos();
+            let QuotedText(text) = expect_nonterminal(stream)?;
+            expect_syntax('"', stream)?;
+
+            let result = parse_user(&mut text.chars().peekable());
+            if result.is_err() {
+                unrecoverable!(pos = begin_pos, stream, "invalid user")
+            } else {
+                result
+            }
+        } else {
+            parse_user(stream)
+        }
     }
 }
 
@@ -657,3 +676,27 @@ impl Parse for (String, ConfigValue) {
 }
 
 impl Many for (String, ConfigValue) {}
+
+/// Usernames and hostnames can contain escapes, or be surrounded in quotes
+/// (avoiding the need for escapes)
+pub struct Quoted<T>(T);
+
+impl<T: Token + UserFriendly> Parse for Quoted<T> {
+    fn parse(stream: &mut impl CharStream) -> Parsed<Self> {
+        let item = if is_syntax('"', stream)? {
+            let Unquoted(quoted_item) = expect_nonterminal(stream)?;
+            expect_syntax('"', stream)?;
+
+            quoted_item
+        } else {
+            try_nonterminal(stream)?
+        };
+
+        make(Quoted(item))
+    }
+}
+
+impl<T: Many> Many for Quoted<T> {
+    const SEP: char = T::SEP;
+    const LIMIT: usize = T::LIMIT;
+}

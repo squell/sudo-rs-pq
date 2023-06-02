@@ -41,7 +41,6 @@ impl<Iter: Iterator<Item = char>> CharStream for PeekableWithPos<Iter> {
     }
 }
 
-#[cfg(test)]
 impl<Iter: Iterator<Item = char>> CharStream for std::iter::Peekable<Iter> {
     fn advance(&mut self) {
         self.next();

@@ -104,6 +104,14 @@ mod names {
     impl<T> UserFriendly for Def<T> {
         const DESCRIPTION: &'static str = "alias definition";
     }
+
+    impl<T: UserFriendly> UserFriendly for Quoted<T> {
+        const DESCRIPTION: &'static str = T::DESCRIPTION;
+    }
+
+    impl<T: UserFriendly> UserFriendly for tokens::Unquoted<T> {
+        const DESCRIPTION: &'static str = T::DESCRIPTION;
+    }
 }
 
 #[cfg(test)]

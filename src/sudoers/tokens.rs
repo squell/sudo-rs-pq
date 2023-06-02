@@ -83,6 +83,31 @@ impl Token for Hostname {
 
 impl Many for Hostname {}
 
+/// Some tokens that support escape characters also support being surrounded by quotes to avoid
+/// escaping directly; this token does not read the surrounding `"` itself
+pub struct Unquoted<T>(pub T);
+
+impl<T: Token> Token for Unquoted<T> {
+    const MAX_LEN: usize = T::MAX_LEN;
+
+    fn construct(text: String) -> Result<Self, String> {
+        Ok(Unquoted(T::construct(text)?))
+    }
+
+    fn accept(c: char) -> bool {
+        !Self::escaped(c) && T::accept(c) || T::escaped(c)
+    }
+
+    fn accept_1st(c: char) -> bool {
+        T::accept_1st(c)
+    }
+
+    const ESCAPE: bool = true;
+    fn escaped(c: char) -> bool {
+        matches!(c, '\\' | '"')
+    }
+}
+
 /// This enum allows items to use the ALL wildcard or be specified with aliases, or directly.
 /// (Maybe this is better defined not as a Token but simply directly as an implementation of [crate::sudoers::basic_parser::Parse])
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
