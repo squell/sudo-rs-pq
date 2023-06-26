@@ -240,6 +240,8 @@ impl<T: Token> Parse for T {
             } else if accept_if(|c| c == T::ESCAPE, stream).is_ok() {
                 if let Ok(c) = accept_if(T::escaped, stream) {
                     Ok(c)
+                } else if T::ESCAPE == '\\' && accept_if(|c| c == '\n', stream).is_ok() {
+                    reject()
                 } else {
                     unrecoverable!(stream, "illegal escape sequence")
                 }
@@ -250,7 +252,7 @@ impl<T: Token> Parse for T {
 
         let start_pos = stream.get_pos();
         let mut str = accept_escaped::<T>(T::accept_1st, stream)?.to_string();
-        while let Ok(c) = accept_escaped::<T>(T::accept, stream) {
+        while let Some(c) = maybe(accept_escaped::<T>(T::accept, stream))? {
             if str.len() >= T::MAX_LEN {
                 unrecoverable!(stream, "token exceeds maximum length")
             }
