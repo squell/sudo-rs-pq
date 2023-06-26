@@ -222,7 +222,7 @@ pub trait Token: Sized {
         Self::accept(c)
     }
 
-    const ESCAPE: char = '\0';
+    const ESCAPE: bool = false;
     fn escaped(_: char) -> bool {
         false
     }
@@ -237,10 +237,10 @@ impl<T: Token> Parse for T {
         ) -> Parsed<char> {
             if let Ok(c) = accept_if(pred, stream) {
                 Ok(c)
-            } else if accept_if(|c| c == T::ESCAPE, stream).is_ok() {
+            } else if T::ESCAPE && accept_if(|c| c == '\\', stream).is_ok() {
                 if let Ok(c) = accept_if(T::escaped, stream) {
                     Ok(c)
-                } else if T::ESCAPE == '\\' && accept_if(|c| c == '\n', stream).is_ok() {
+                } else if accept_if(|c| c == '\n', stream).is_ok() {
                     reject()
                 } else {
                     unrecoverable!(stream, "illegal escape sequence")
