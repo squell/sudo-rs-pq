@@ -43,7 +43,12 @@ pub fn kernel_check() -> Result<(), Error> {
     Ok(())
 }
 
-#[cfg(not(any(target_os = "freebsd", target_os = "linux")))]
+#[cfg(target_os = "macos")]
+pub fn kernel_check() -> Result<(), Error> {
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "freebsd", target_os = "linux", target_os = "macos")))]
 pub fn kernel_check() -> Result<(), Error> {
     compile_error!("sudo-rs only works on Linux and FreeBSD")
 }
