@@ -25,15 +25,16 @@ mod pipeline;
 
 #[cfg_attr(not(feature = "dev"), allow(dead_code))]
 fn unstable_warning() {
-    let check_var = std::env::var("SUDO_RS_IS_UNSTABLE").unwrap_or_else(|_| "".to_string());
+    let check_var = std::env::var("SUDO_RS_IS_PQ").unwrap_or_else(|_| "".to_string());
 
-    if check_var != "I accept that my system may break unexpectedly" {
+    if check_var != "I accept that quantum computers may break my system unexpectedly" {
         eprintln_ignore_io_error!(
             "WARNING!
-Sudo-rs is compiled with development logs on, which means it is less secure and could potentially
-break your system. We recommend that you do not run this on any production environment.
-To turn off this warning and use sudo-rs you need to set the environment variable
-SUDO_RS_IS_UNSTABLE to the value `I accept that my system may break unexpectedly`."
+Sudo-rs is compiled with post-quantum hardening on, which is experimental and could potentially
+mean that quantum computers still break your system. We recommend that you do not run this on
+any environment which expects quantum attacks. To turn off this warning and use sudo-rs you need
+to set the environment variable SUDO_RS_IS_PQ to the value `I accept that quantum computers
+may break my system unexpectedly`."
         );
 
         std::process::exit(1);
@@ -102,7 +103,6 @@ fn sudo_process() -> Result<(), Error> {
                     eprintln_ignore_io_error!("{}", help::USAGE_MSG);
                     std::process::exit(1);
                 } else {
-                    #[cfg(feature = "dev")]
                     unstable_warning();
 
                     pipeline::run(options)
